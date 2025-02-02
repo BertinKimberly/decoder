@@ -1,46 +1,97 @@
-import cv2
-import numpy as np
 from pylibdmtx.pylibdmtx import decode
+import cv2
+import sys
 
-# Step 1: Load the image
-image_path = 'IMG_2019.jpg'  # Replace with your image path
-image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+def load_image(image_path):
+    """
+    Load an image from the specified path in grayscale mode.
+    :param image_path: Path to the image file.
+    :return: Loaded image or None if loading fails.
+    """
+    try:
+        image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            raise FileNotFoundError(f"Image file not found or could not be opened: {image_path}")
+        return image
+    except Exception as e:
+        print(f"Error loading image: {e}")
+        return None
 
-# Check if the image was loaded successfully
-if image is None:
-    print("Error: Unable to load image. Please check the file path.")
-    exit()
+def decode_data_matrix(image):
+    """
+    Decode Data Matrix barcodes from the given image.
+    :param image: Grayscale image containing Data Matrix barcodes.
+    :return: List of decoded objects or None if decoding fails.
+    """
+    try:
+        decoded_objects = decode(image)
+        if not decoded_objects:
+            print("No Data Matrix barcodes found in the image.")
+        return decoded_objects
+    except Exception as e:
+        print(f"Error decoding Data Matrix: {e}")
+        return None
 
-# Step 2: Resize the image to make the Data Matrix code larger
-scale_percent = 200  # Increase size by 200% (adjust as needed)
-width = int(image.shape[1] * scale_percent / 100)
-height = int(image.shape[0] * scale_percent / 100)
-dim = (width, height)
-resized_image = cv2.resize(image, dim, interpolation=cv2.INTER_LINEAR)
+def save_image(image, output_path):
+    """
+    Save the image to the specified output path.
+    :param image: Image to save.
+    :param output_path: Path to save the image.
+    :return: True if successful, False otherwise.
+    """
+    try:
+        success = cv2.imwrite(output_path, image)
+        if not success:
+            raise IOError(f"Failed to save image to: {output_path}")
+        print(f"Annotated image saved successfully as: {output_path}")
+        return True
+    except Exception as e:
+        print(f"Error saving image: {e}")
+        return False
 
-# Step 3: Apply thresholding to make the code more readable
-_, thresholded_image = cv2.threshold(resized_image, 128, 255, cv2.THRESH_BINARY)
+def display_image(image, window_name="Barcode with Annotation"):
+    """
+    Display the image in a window.
+    :param image: Image to display.
+    :param window_name: Name of the window.
+    """
+    try:
+        cv2.imshow(window_name, image)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
+    except Exception as e:
+        print(f"Error displaying image: {e}")
 
-# Step 4: Optionally, apply noise reduction
-denoised_image = cv2.medianBlur(thresholded_image, 3)
+def main():
+    # Path to the input image
+    input_image_path = "IMG_2019.jpg"
+    # Path to save the output image
+    output_image_path = "image2_datamatrix.jpg"
 
-# Step 5: Crop the image to focus on the center (zoom in)
-height, width = denoised_image.shape
-crop_size = 300  # Adjust this value based on the size of the code
-start_x = width // 2 - crop_size // 2
-start_y = height // 2 - crop_size // 2
-cropped_image = denoised_image[start_y:start_y + crop_size, start_x:start_x + crop_size]
+    # Step 1: Load the image
+    image = load_image(input_image_path)
+    if image is None:
+        sys.exit(1)  # Exit if the image cannot be loaded
 
-# Save the preprocessed and cropped image for debugging
-cv2.imwrite('preprocessed_image.jpg', denoised_image)
-cv2.imwrite('cropped_image.jpg', cropped_image)
+    # Step 2: Decode Data Matrix barcodes
+    decoded_objects = decode_data_matrix(image)
+    if decoded_objects is None:
+        sys.exit(1)  # Exit if decoding fails
 
-# Step 6: Decode the Data Matrix code
-decoded_objects = decode(cropped_image)
-
-# Step 7: Check if the code was successfully decoded
-if decoded_objects:
+    # Step 3: Print decoded data
     for obj in decoded_objects:
-        print("Decoded Data:", obj.data.decode('utf-8'))
-else:
-    print("No Data Matrix code found or unable to decode.")
+        try:
+            data = obj.data.decode("utf-8")
+            print("Decoded Data:", data)
+        except UnicodeDecodeError:
+            print("Error: Failed to decode the barcode data as UTF-8.")
+
+    # Step 4: Save the image
+    if not save_image(image, output_image_path):
+        sys.exit(1)  # Exit if saving the image fails
+
+    # Step 5: Display the image
+    display_image(image)
+
+if __name__ == "__main__":
+    main()

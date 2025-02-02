@@ -8,6 +8,7 @@ opencv-python==4.11.0.86
 packaging==24.2
 pdf417decoder==1.0.8
 pillow==11.1.0
+pylibdmtx==0.1.10
 pyparsing==3.2.1
 python-dateutil==2.9.0.post0
 pyzbar==0.1.9
